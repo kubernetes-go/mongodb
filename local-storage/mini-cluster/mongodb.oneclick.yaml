@@ -1,0 +1,280 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mongo-pv-master
+  labels:
+    name: mongo-pv-master
+spec:
+  capacity:
+    storage: 500Gi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  claimRef:
+    namespace: default
+    name: mongo-pvc-master
+  storageClassName: local-storage
+  hostPath:
+    path: "/mnt/mongo_data_master"
+
+---
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mongo-pv-replica-1
+  labels:
+    name: mongo-pv-replica-1
+spec:
+  capacity:
+    storage: 500Gi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  claimRef:
+    namespace: default
+    name: mongo-pvc-replica-1
+  storageClassName: local-storage
+  hostPath:
+    path: "/mnt/mongo_data_replica_1"
+
+---
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mongo-pv-replica-2
+  labels:
+    name: mongo-pv-replica-2
+spec:
+  capacity:
+    storage: 500Gi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  claimRef:
+    namespace: default
+    name: mongo-pvc-replica-2
+  storageClassName: local-storage
+  hostPath:
+    path: "/mnt/mongo_data_replica_2"
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: mongo-pvc-master
+spec:
+  storageClassName: local-storage
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  selector:
+    matchLabels:
+      name: mongo-pvc-master
+
+---
+
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: mongo-pvc-replica-1
+spec:
+  storageClassName: local-storage
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  selector:
+    matchLabels:
+      name: mongo-pvc-replica-1
+
+---
+
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: mongo-pvc-replica-2
+spec:
+  storageClassName: local-storage
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  selector:
+    matchLabels:
+      name: mongo-pvc-replica-2
+
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo-stateful-set-master
+  labels:
+    name: mongo-stateful-set-master
+spec:
+  selector:
+    matchLabels:
+      app: mongo-stateful-set-master
+  serviceName: "mongo-service-master"
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mongo-stateful-set-master
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: mongo-master
+        image: mongo
+        command:
+          - mongod
+          - "--replSet"
+          - rs0
+          - "--smallfiles"
+          - "--noprealloc"
+          - "--bind_ip_all"
+        ports:
+        - containerPort: 27017
+          name: mongo-port
+        volumeMounts:
+        - name: mongo-pv-storage
+          mountPath: /data/db
+      volumes:
+      - name: mongo-pv-storage
+        persistentVolumeClaim:
+          claimName: mongo-pvc-master
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-service-master
+  labels:
+    name: mongodb-service-master
+spec:
+  type: NodePort
+  ports:
+  - port: 27017
+    targetPort: 27017
+  selector:
+    app: mongo-stateful-set-master
+
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo-stateful-set-replica-1
+  labels:
+    name: mongo-stateful-set-replica-1
+spec:
+  selector:
+    matchLabels:
+      app: mongo-stateful-set-replica-1
+  serviceName: "mongo-service-master-replica-1"
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mongo-stateful-set-replica-1
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: mongo-replica-1
+        image: mongo
+        command:
+          - mongod
+          - "--replSet"
+          - rs0
+          - "--smallfiles"
+          - "--noprealloc"
+          - "--bind_ip_all"
+        ports:
+        - containerPort: 27017
+          name: mongo-port
+        volumeMounts:
+        - name: mongo-pv-storage
+          mountPath: /data/db
+      volumes:
+      - name: mongo-pv-storage
+        persistentVolumeClaim:
+          claimName: mongo-pvc-replica-1
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-service-replica-1
+  labels:
+    name: mongodb-service-replica-1
+spec:
+  type: NodePort
+  ports:
+  - port: 27017
+    targetPort: 27017
+  selector:
+    app: mongo-stateful-set-replica-1
+
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo-stateful-set-replica-2
+  labels:
+    name: mongo-stateful-set-replica-2
+spec:
+  selector:
+    matchLabels:
+      app: mongo-stateful-set-replica-2
+  serviceName: "mongo-service-master-replica-2"
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mongo-stateful-set-replica-2
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: mongo-replica-2
+        image: mongo
+        command:
+          - mongod
+          - "--replSet"
+          - rs0
+          - "--smallfiles"
+          - "--noprealloc"
+          - "--bind_ip_all"
+        ports:
+        - containerPort: 27017
+          name: mongo-port
+        volumeMounts:
+        - name: mongo-pv-storage
+          mountPath: /data/db
+      volumes:
+      - name: mongo-pv-storage
+        persistentVolumeClaim:
+          claimName: mongo-pvc-replica-2
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-service-replica-2
+  labels:
+    name: mongodb-service-replica-2
+spec:
+  type: NodePort
+  ports:
+  - port: 27017
+    targetPort: 27017
+  selector:
+    app: mongo-stateful-set-replica-2

@@ -3,11 +3,12 @@ kind: Service
 metadata:
   name: mongo-external
   labels:
-    name: mongo
+    name: mongo-external
 spec:
   ports:
   - port: 27017
     targetPort: 27017
   selector:
     role: mongo
+    app: mongo
   type: LoadBalancer
