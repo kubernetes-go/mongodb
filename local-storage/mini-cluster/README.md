@@ -13,3 +13,9 @@ $> rs.add("mongodb-service-replica-1")
 $> rs.add("mongodb-service-replica-2")
 $> rs.status()
 ```
+
+### save mongodb connection string to Secrets
+
+```sh
+$ kubectl apply -f mongodb-connection-string.secret.yaml
+```
